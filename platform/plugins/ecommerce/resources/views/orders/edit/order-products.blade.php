@@ -1,6 +1,6 @@
 <x-core::table :hover="false" :striped="false" class="order-products-table">
     <x-core::table.body>
-        <?php //echo "<pre>";print_r($order->products);?>
+        <?php //secho "<pre>";print_r($order->products);?>
         @foreach ($order->products as $orderProduct)
             @php
                 $product = $orderProduct->product->original_product;
@@ -32,7 +32,13 @@
                             <p class="mb-0">({{ trans('plugins/ecommerce::order.sku') }}: <strong>{{ $sku }}</strong>)</p>
                         @endif
 
-                        <p class="mb-0">(Category: <strong>{{ $orderProduct->product_category }}</strong>)</p>
+                        @if (!empty($orderProduct->product_category))
+                            <p class="mb-0">(Category: <strong>{{ $orderProduct->product_category }}</strong>)</p>
+                        @endif
+
+                        @if ($orderProduct->is_gift == 1)
+                            <p class="mb-0">(<strong>Free Gift</strong>)</p>
+                        @endif
                     </div>
 
                     @if ($attributes = Arr::get($orderProduct->options, 'attributes'))
@@ -88,7 +94,7 @@
                     @endif
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
-                    {{ format_price($orderProduct->price) }}
+                    {{ $orderProduct->net_amount }}
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
                     x
@@ -97,7 +103,7 @@
                     {{ $orderProduct->qty }}
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
-                    {{ format_price($orderProduct->total_amount) }}
+                    {{ format_price($orderProduct->net_amount) }}
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
                     {{ format_price($orderProduct->tax_amount) }}
