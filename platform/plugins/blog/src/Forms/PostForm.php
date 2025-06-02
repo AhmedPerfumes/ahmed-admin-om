@@ -33,6 +33,14 @@ class PostForm extends FormAbstract
             ->model(Post::class)
             ->setValidatorClass(PostRequest::class)
             ->hasTabs()
+            ->add(
+                'post_date',
+                DatePickerField::class,
+                DatePickerFieldOption::make()
+                    ->label('Post Date')
+                    ->defaultValue(BaseHelper::formatDate(Carbon::now()))
+                    ->toArray()
+            )
             ->add('name', TextField::class, NameFieldOption::make()->required()->toArray())
             ->add('description', TextareaField::class, DescriptionFieldOption::make()->toArray())
             ->add(
