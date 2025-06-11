@@ -48,7 +48,7 @@ class ContactController extends Controller
             $mail->Port = env('MAIL_PORT');
     
             $mail->setFrom(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
-            $mail->addAddress('info@ahmedalmaghribi.com');
+            $mail->addAddress('estore.om@ahmedalmaghribi.com');
     
             $mail->isHTML(true);
     
