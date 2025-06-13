@@ -94,7 +94,7 @@
                     @endif
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
-                    {{ $orderProduct->net_amount }}
+                    {{ $orderProduct->discount_percent != 0 ? format_price($orderProduct->price - ($orderProduct->price / 100 * ($orderProduct->discount_percent))) : format_price($orderProduct->price) }}
                 </x-core::table.body.cell>
                 <x-core::table.body.cell>
                     x
