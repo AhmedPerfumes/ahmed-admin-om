@@ -80,14 +80,42 @@ class OrderController extends Controller
             //     ]);
             // }
 
-            if(!is_null($product['discount'])) {
-                $exisProduct->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
-                if(is_null($exisProduct->discount)) {
+            // if(!is_null($product['discount'])) {
+                $discountFromDb = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                $requestHasDiscount = !is_null($product['discount']);
+                $dbHasDiscount = !is_null($discountFromDb);
+
+                if ($requestHasDiscount && !$dbHasDiscount) {
+                    // Request says there should be a discount, but none found in DB
                     return response()->json([
-                        'discountMessage'          => 'One or more Products were removed. Please add them again to continue.'
+                        'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
                     ]);
                 }
-            }
+
+                if (!$requestHasDiscount && $dbHasDiscount) {
+                    // Request says there should be no discount, but one exists in DB
+                    return response()->json([
+                        'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
+                    ]);
+                }
+
+                // Optional: if you want to compare actual values of discount too
+                if ($requestHasDiscount && $dbHasDiscount) {
+                    $match =
+                        $product['discount']['value'] == $discountFromDb->value &&
+                        $product['discount']['start_date'] == $discountFromDb->start_date &&
+                        $product['discount']['end_date'] == $discountFromDb->end_date;
+
+                    if (!$match) {
+                        return response()->json([
+                            'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
+                        ]);
+                    }
+                }
+
+                // All matched, assign discount
+                $exisProduct->discount = $discountFromDb;
+            // }
 
             array_push($barcodes, $exisProduct->barcode);
         }
