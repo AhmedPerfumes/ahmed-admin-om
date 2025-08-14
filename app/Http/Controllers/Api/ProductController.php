@@ -90,7 +90,7 @@ class ProductController extends Controller
                             ->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')
                             ->first();
 
-                            $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                             $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
                             $val->coupon = [];
                             foreach ($coupons as $coupon) {
                                 $val->coupon[strtolower($coupon->code)] = [
@@ -129,7 +129,16 @@ class ProductController extends Controller
 
                             $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                            $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                            $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                            $val->coupon = [];
+                            foreach ($coupons as $coupon) {
+                                $val->coupon[strtolower($coupon->code)] = [
+                                    'code' => strtolower($coupon->code),
+                                    'value' => $coupon->value,
+                                    'start_date' => $coupon->start_date,
+                                    'end_date' => $coupon->end_date,
+                                ];
+                            }
                         }
                 } elseif($category == 'GIFT SETS') {
                     $productCategory->products = DB::table('ec_product_category_product')
@@ -159,7 +168,16 @@ class ProductController extends Controller
 
                             $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                            $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                            $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                            $val->coupon = [];
+                            foreach ($coupons as $coupon) {
+                                $val->coupon[strtolower($coupon->code)] = [
+                                    'code' => strtolower($coupon->code),
+                                    'value' => $coupon->value,
+                                    'start_date' => $coupon->start_date,
+                                    'end_date' => $coupon->end_date,
+                                ];
+                            }
                         }
                 }
                 elseif($category == 'ONLINE EXCLUSIVE') {
@@ -190,7 +208,16 @@ class ProductController extends Controller
 
                             $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                            $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                            $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                            $val->coupon = [];
+                            foreach ($coupons as $coupon) {
+                                $val->coupon[strtolower($coupon->code)] = [
+                                    'code' => strtolower($coupon->code),
+                                    'value' => $coupon->value,
+                                    'start_date' => $coupon->start_date,
+                                    'end_date' => $coupon->end_date,
+                                ];
+                            }
                         }
                 }
                 else {
@@ -223,7 +250,16 @@ class ProductController extends Controller
 
                             $v->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $v->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                            $v->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $v->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                            $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $v->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                            $v->coupon = [];
+                            foreach ($coupons as $coupon) {
+                                $v->coupon[strtolower($coupon->code)] = [
+                                    'code' => strtolower($coupon->code),
+                                    'value' => $coupon->value,
+                                    'start_date' => $coupon->start_date,
+                                    'end_date' => $coupon->end_date,
+                                ];
+                            }
                         }
                     }
                 }
@@ -255,7 +291,16 @@ class ProductController extends Controller
 
                     $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                    $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                     $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                    $val->coupon = [];
+                    foreach ($coupons as $coupon) {
+                        $val->coupon[strtolower($coupon->code)] = [
+                            'code' => strtolower($coupon->code),
+                            'value' => $coupon->value,
+                            'start_date' => $coupon->start_date,
+                            'end_date' => $coupon->end_date,
+                        ];
+                    }
                 }
             }
             return response()->json($productCategory);
@@ -329,7 +374,16 @@ class ProductController extends Controller
 
                 $prod->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $prod->product_id)->whereNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                $prod->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $prod->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                 $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $prod->product_id)->whereNotNull('code') ->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                $prod->coupon = [];
+                foreach ($coupons as $coupon) {
+                    $prod->coupon[strtolower($coupon->code)] = [
+                        'code' => strtolower($coupon->code),
+                        'value' => $coupon->value,
+                        'start_date' => $coupon->start_date,
+                        'end_date' => $coupon->end_date,
+                    ];
+                }
 
                 foreach ($prod->related_prods as $key => $val) {
                     $val->subcategory = DB::table('ec_product_categories')
@@ -341,7 +395,16 @@ class ProductController extends Controller
 
                     $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                    $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                    $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                    $val->coupon = [];
+                    foreach ($coupons as $coupon) {
+                        $val->coupon[strtolower($coupon->code)] = [
+                            'code' => strtolower($coupon->code),
+                            'value' => $coupon->value,
+                            'start_date' => $coupon->start_date,
+                            'end_date' => $coupon->end_date,
+                        ];
+                    }
                 }
             return response()->json($prod);
         }
@@ -395,7 +458,16 @@ class ProductController extends Controller
 
                 $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                $val->coupon = [];
+                foreach ($coupons as $coupon) {
+                    $val->coupon[strtolower($coupon->code)] = [
+                        'code' => strtolower($coupon->code),
+                        'value' => $coupon->value,
+                        'start_date' => $coupon->start_date,
+                        'end_date' => $coupon->end_date,
+                    ];
+                }
             }
         } else {
             // echo "else";
@@ -436,7 +508,16 @@ class ProductController extends Controller
 
                 $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
 
-                $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                $val->coupon = [];
+                foreach ($coupons as $coupon) {
+                    $val->coupon[strtolower($coupon->code)] = [
+                        'code' => strtolower($coupon->code),
+                        'value' => $coupon->value,
+                        'start_date' => $coupon->start_date,
+                        'end_date' => $coupon->end_date,
+                    ];
+                }
             }
         }
 
@@ -470,7 +551,16 @@ class ProductController extends Controller
             foreach ($products as $key => $val) {
                 $val->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left');
 
-                $val->coupon = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+                $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $val->product_id)->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                $val->coupon = [];
+                foreach ($coupons as $coupon) {
+                    $val->coupon[strtolower($coupon->code)] = [
+                        'code' => strtolower($coupon->code),
+                        'value' => $coupon->value,
+                        'start_date' => $coupon->start_date,
+                        'end_date' => $coupon->end_date,
+                    ];
+                }
             }
         return response()->json($products);
     }
