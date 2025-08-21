@@ -723,15 +723,15 @@ class EcommerceServiceProvider extends ServiceProvider
                         'permissions' => ['ecommerce.shipments.index'],
                     ]);
                 })
-                ->registerItem([
-                    'id' => 'cms-plugins-ecommerce-invoice',
-                    'priority' => 50,
-                    'parent_id' => 'cms-plugins-ecommerce',
-                    'name' => 'plugins/ecommerce::invoice.name',
-                    'icon' => 'ti ti-file-invoice',
-                    'url' => fn () => route('ecommerce.invoice.index'),
-                    'permissions' => ['ecommerce.invoice.index'],
-                ])
+                    // ->registerItem([
+                    //     'id' => 'cms-plugins-ecommerce-invoice',
+                    //     'priority' => 50,
+                    //     'parent_id' => 'cms-plugins-ecommerce',
+                    //     'name' => 'plugins/ecommerce::invoice.name',
+                    //     'icon' => 'ti ti-file-invoice',
+                    //     'url' => fn () => route('ecommerce.invoice.index'),
+                    //     'permissions' => ['ecommerce.invoice.index'],
+                    // ])
                 ->registerItem([
                     'id' => 'cms-plugins-ecommerce-product',
                     'priority' => 60,
