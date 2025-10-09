@@ -893,7 +893,8 @@ class OrderController extends Controller
                 ]
             ],
             "merchant" => [
-                "id" => "59033828"
+                "id" => config('payment.tap_merchant_id'),
+                // "id" => "59033828"
             ],
             "source" => [
                 "id" => "src_card"
@@ -903,9 +904,11 @@ class OrderController extends Controller
             ],
         ];
 
-        $SERVER_KEY = 'sk_test_Qf0gGLRJyHi2vUs45KwTxc3j';
+        $SERVER_KEY = config('payment.tap_secret_key');
+        // $SERVER_KEY = 'sk_test_Qf0gGLRJyHi2vUs45KwTxc3j';
         // $SERVER_KEY = 'sk_live_5DKIqbSBsgZAfWXFPijQtkEM';
-        $BASE_URL = 'https://api.tap.company/v2/charges';
+        $BASE_URL = config('payment.tap_base_url');
+        // $BASE_URL = 'https://api.tap.company/v2/charges';
 
         // $data['profile_id'] = $PROFILE_ID;
         $curl = curl_init();
@@ -937,8 +940,10 @@ class OrderController extends Controller
         // $order = Order::where('user_id', $customer->id)->orderBy('id', 'desc')->first();
         $order = Order::where('code', base64_decode($request->query('order_number')))->orderBy('id', 'desc')->first();
         // echo "<pre>";print_r($order);
-        $BASE_URL = 'https://api.tap.company/v2/charges/';
-        $SERVER_KEY = 'sk_test_Qf0gGLRJyHi2vUs45KwTxc3j';
+        $BASE_URL = config('payment.tap_redirect_url');
+        // $BASE_URL = 'https://api.tap.company/v2/charges/';
+        $SERVER_KEY = config('payment.tap_secret_key');
+        // $SERVER_KEY = 'sk_test_Qf0gGLRJyHi2vUs45KwTxc3j';
         // $SERVER_KEY = 'sk_live_5DKIqbSBsgZAfWXFPijQtkEM';
 
         // Initialize cURL session
