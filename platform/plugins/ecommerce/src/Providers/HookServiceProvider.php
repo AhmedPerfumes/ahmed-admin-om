@@ -81,6 +81,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Botble\Ecommerce\Enums\OrderStatusEnum;
 
 class HookServiceProvider extends ServiceProvider
 {
@@ -1042,7 +1043,7 @@ class HookServiceProvider extends ServiceProvider
             if (Auth::user()->hasPermission('orders.edit')) {
                 $orders = Order::query()
                     ->where([
-                        'status' => BaseStatusEnum::PENDING,
+                        'status' => OrderStatusEnum::PROCESSING,
                         'is_finished' => 1,
                     ])
                     ->orderByDesc('created_at')
@@ -1108,7 +1109,7 @@ class HookServiceProvider extends ServiceProvider
         if (Auth::check() && Auth::user()->hasPermission('orders.index')) {
             $pendingOrders = Order::query()
                 ->where([
-                    'status' => BaseStatusEnum::PENDING,
+                    'status' => OrderStatusEnum::PROCESSING,
                     'is_finished' => 1,
                 ])
                 ->count();
