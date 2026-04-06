@@ -1724,31 +1724,273 @@ class ProductController extends Controller
             
             // Replicating your controller's logic, but adding 'type_option' 
             // so the frontend knows if it is 'percentage' or 'amount'.
-            $val->discount = DiscountProduct::select(
-                    'ec_discounts.value', 
-                    'ec_discounts.start_date', 
-                    'ec_discounts.end_date',
-                    'ec_discounts.type_option as discount_type' // Critical for frontend calculation
-                )
-                ->where('product_id', $val->product_id)
-                ->whereNull('code') // Auto-discounts only (no coupons)
+            // $val->discount = DiscountProduct::select(
+            //         'ec_discounts.value', 
+            //         'ec_discounts.start_date', 
+            //         'ec_discounts.end_date',
+            //         'ec_discounts.type_option as discount_type' // Critical for frontend calculation
+            //     )
+            //     ->where('product_id', $val->product_id)
+            //     ->whereNull('code') // Auto-discounts only (no coupons)
+            //     ->whereDate('start_date', '<=', now())
+            //     ->whereDate('end_date', '>=', now())
+            //     ->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')
+            //     ->first();
+
+            // // Normalizing the discount type for the frontend
+            // // Botble usually stores 'percentage' or 'amount' in type_option
+            // if ($val->discount) {
+            //     if ($val->discount->discount_type === 'percentage') {
+            //         $val->discount->discount_type = 'percent';
+            //     }
+                
+            //     // Ensure value is an integer/float as expected
+            //     $val->discount->value = (float)$val->discount->value;
+            // }
+             $val->discount = null;
+
+            // A. Check Individual Discount
+            $individualDiscount = Promotion::where('type', 'discount')
                 ->whereDate('start_date', '<=', now())
                 ->whereDate('end_date', '>=', now())
-                ->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')
+                ->whereHas('discountRules', function ($query) {
+                    $query->where('apply_to', 'individual');
+                })
+                ->whereHas('discountRules.individualRules', function ($query) use ($val) {
+                    $query->where('product_id', $val->product_id);
+                })
+                ->with(['discountRules.individualRules' => function ($query) use ($val) {
+                    $query->where('product_id', $val->product_id)
+                        ->select('discount_rule_id', 'product_id', 'value', 'discount_type', 'final_price', 'product_price');
+                }])
                 ->first();
 
-            // Normalizing the discount type for the frontend
-            // Botble usually stores 'percentage' or 'amount' in type_option
-            if ($val->discount) {
-                if ($val->discount->discount_type === 'percentage') {
-                    $val->discount->discount_type = 'percent';
+            if ($individualDiscount) {
+                $rule = $individualDiscount->discountRules->first()->individualRules->first();
+                if ($rule) {
+                    $val->discount = (object) [
+                        'value' => intval($rule->value),
+                        'discount_type' => $rule->discount_type,
+                        'final_price' => $rule->final_price,
+                        // 'product_price' => $rule->product_price, // Optional if needed by frontend
+                        'start_date' => $individualDiscount->start_date->format('Y-m-d H:i:s'),
+                        'end_date' => $individualDiscount->end_date->format('Y-m-d H:i:s'),
+                    ];
                 }
-                
-                // Ensure value is an integer/float as expected
-                $val->discount->value = (float)$val->discount->value;
             }
+            else {
+                $groupDiscount = Promotion::where('type', 'discount')
+                    ->whereDate('start_date', '<=', now())
+                    ->whereDate('end_date', '>=', now())
+                    ->whereHas('discountRules', function ($query) {
+                        $query->where('apply_to', '!=', 'individual');
+                    })
+                    ->whereHas('discountRules.products', function ($query) use ($val) {
+                        $query->where('product_id', $val->product_id);
+                    })
+                    ->with(['discountRules' => function ($query) {
+                        $query->select('id', 'promotion_id', 'percentage', 'apply_to');
+                    }])
+                    ->first();
+
+                if ($groupDiscount) {
+                    $rule = $groupDiscount->discountRules->first();
+                    if ($rule) {
+                        $val->discount = (object) [
+                            'value' => intval($rule->percentage),
+                            'discount_type' => 'percent',
+                            'start_date' => $groupDiscount->start_date->format('Y-m-d H:i:s'),
+                            'end_date' => $groupDiscount->end_date->format('Y-m-d H:i:s'),
+                        ];
+                    }
+                }
+            }
+
+
         }
 
         return response()->json($products);
+    }
+
+    public function bogoProducts(Request $request)
+    {
+        try {
+            // Fetch active promotions with type 'buy_x_get_y' and join with rules and products
+            $promotions = DB::table('promotions')
+                ->select(
+                    'promotions.id as promotion_id',
+                    'promotions.name',
+                    'buy_x_get_y_rules.id as rule_id',
+                    'buy_x_get_y_rules.buy_quantity',
+                    'buy_x_get_y_rules.get_quantity',
+                    'buy_x_get_y_products.id as product_rule_id',
+                    'buy_x_get_y_products.product_id',
+                    'buy_x_get_y_products.type as product_type',
+                    'ec_products.name as product_name',
+                    'ec_products.price as product_price',
+                    'ec_products.image as product_image'
+                )
+                ->where('promotions.type', 'buy_x_get_y')
+                ->where('promotions.start_date', '<=', now())
+                ->where('promotions.end_date', '>=', now())
+                ->leftJoin('buy_x_get_y_rules', 'promotions.id', '=', 'buy_x_get_y_rules.promotion_id')
+                ->leftJoin('buy_x_get_y_products', 'buy_x_get_y_rules.id', '=', 'buy_x_get_y_products.rule_id')
+                ->leftJoin('ec_products', 'buy_x_get_y_products.product_id', '=', 'ec_products.id')
+                ->get();
+
+            // Handle empty promotions
+            if ($promotions->isEmpty()) {
+                // \Log::info('No active BOGO promotions found.');
+                return response()->json(['bogoProducts' => []], 200);
+            }
+
+            // Group promotions by promotion_id and rule_id
+            $groupedPromotions = $promotions->groupBy('promotion_id')->map(function ($promoGroup) {
+                $firstPromo = $promoGroup->first();
+                // Skip if no valid promotion data
+                if (!$firstPromo || !isset($firstPromo->name)) {
+                    // \Log::warning('Skipping promotion with missing data', ['promoGroup' => $promoGroup]);
+                    return [];
+                }
+
+                $rules = $promoGroup->groupBy('rule_id')->map(function ($ruleGroup) use ($firstPromo) {
+                    $firstRule = $ruleGroup->first();
+                    // Skip if no valid rule data
+                    if (!$firstRule || !isset($firstRule->rule_id)) {
+                        // \Log::warning('Skipping rule with missing data', ['ruleGroup' => $ruleGroup]);
+                        return null;
+                    }
+
+                    $buyProducts = $ruleGroup->filter(function ($row) {
+                        return $row->product_type === 'buy';
+                    })->map(function ($row) {
+                        return [
+                            'product_id' => $row->product_id,
+                            'product_name' => $row->product_name ?? 'Unknown',
+                            'price' => $row->product_price ?? 0,
+                            'image' => $row->product_image ?? '',
+                        ];
+                    })->values()->toArray();
+
+                    $freeProducts = $ruleGroup->filter(function ($row) {
+                        return $row->product_type === 'free';
+                    })->map(function ($row) {
+                        return [
+                            'product_id' => $row->product_id,
+                            'product_name' => $row->product_name ?? 'Unknown',
+                            'price' => 0,
+                            'image' => $row->product_image ?? '',
+                            'is_gift' => true,
+                            'discount' => null,
+                            'coupon' => [],
+                            'type' => 'bogo',
+                        ];
+                    })->values()->toArray();
+
+                    // Handle empty free_products: Copy all buy_products
+                    // if (empty($freeProducts) && !empty($buyProducts)) {
+                    //     $freeProducts = collect($buyProducts)->map(function ($product) {
+                    //         return [
+                    //             'product_id' => $product['product_id'],
+                    //             'product_name' => $product['product_name'],
+                    //             'price' => 0,
+                    //             'image' => $product['image'],
+                    //             'is_gift' => true,
+                    //             'discount' => null,
+                    //             'coupon' => [],
+                    //         ];
+                    //     })->values()->toArray();
+                    // }
+
+                    return [
+                        'id' => $firstRule->rule_id,
+                        'name' => $firstPromo->name,
+                        'buy_quantity' => $firstRule->buy_quantity ?? 1,
+                        'get_quantity' => $firstRule->get_quantity ?? 1,
+                        'buy_products' => $buyProducts,
+                        'free_products' => $freeProducts,
+                        'selection_rule' => $this->determineSelectionRule($firstRule, $firstPromo->name, !empty($freeProducts)),
+                        'campaign' => $firstPromo->name
+                            ? str_replace(' ', '_', strtolower($firstPromo->name)) . '_2025_campaign'
+                            : 'default_campaign_' . $firstRule->rule_id,
+                    ];
+                })->filter()->values()->toArray();
+
+                return $rules;
+            })->flatten(1)->toArray();
+
+            return response()->json([
+                'bogoProducts' => $groupedPromotions,
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching BOGO products: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'error' => 'Failed to fetch BOGO products',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+     public function freeGiftProducts(Request $request)
+    {
+        $thresholds = DB::table('foc_rules')->where('type', 'foc')->where('start_date', '<=', now())->where('end_date', '>=', now())->join('promotions', 'promotions.id', '=', 'foc_rules.promotion_id')->select('name', 'foc_rules.id', 'min_threshold AS min', 'max_threshold As max')->orderBy('min', 'asc')->get();
+
+        if($thresholds->isEmpty()) {
+            return response()->json(['thresholds' => []])->header('Cache-Control', 'public, max-age=0, s-maxage=0')->setEtag(md5(json_encode(['thresholds' => []])));  // Cache 1 Day in the browser, 2 Days at Cloudflare
+        }
+        foreach ($thresholds as $threshold) {
+            $giftData = [];
+            $gifts = DB::table('foc_products')->where('foc_rule_id', $threshold->id)->join('ec_products', 'ec_products.id', '=', 'foc_products.product_id')->select('foc_products.product_id', 'ec_products.name', 'ec_products.price', 'ec_products.images')->get();
+            foreach ($gifts as $gift) {
+                $decodedOnce = is_string($gift->images) ? json_decode($gift->images, true) : $gift->images;
+
+                if (is_string($decodedOnce)) {
+                    $images = json_decode($decodedOnce, true);
+                } elseif (is_array($decodedOnce)) {
+                    $images = $decodedOnce;
+                } else {
+                    $images = [];
+                }
+
+                $firstImage = $images[0] ?? null;
+                
+                $giftData[] = [
+                    'product_id' => $gift->product_id,
+                    'product_name' => $gift->name,
+                    'price' => 0,
+                    'image' => $firstImage,
+                    'is_gift' => true,
+                    'discount' => null,
+                    'coupon' => [],
+                    'campaign' => strtolower(str_replace(' ', '_', $threshold->name)).'_'.now()->year.'_campaign',
+                    'type' => 'foc',
+                ];
+            }
+            $threshold->gifts = $giftData;
+        }
+
+        $response = response()->json(['thresholds' => $thresholds])->header('Cache-Control', 'public, max-age=0, s-maxage=0')->setEtag(md5(json_encode(['thresholds' => $thresholds])));  // Cache 1 Day in the browser, 2 Days at Cloudflare
+
+        if ($response->isNotModified(request())) {
+            return $response;
+        }
+
+        return $response;
+    }
+    private function determineSelectionRule($rule, $promotionName, $hasFreeProducts)
+    {
+        $buyQty = $rule->buy_quantity ?? 1;
+        $getQty = $rule->get_quantity ?? 1;
+
+        if ($buyQty == 1 && $getQty == 1) {
+            return 'same_product';
+        } elseif ($buyQty == 2 && $getQty == 2) {
+            return 'least_expensive';
+        } elseif ($buyQty == 3 && $getQty == 2) {
+            return $hasFreeProducts ? 'customer_select' : 'least_expensive';
+        } elseif ($buyQty > 1 && $getQty == 1) {
+            return 'auto_add';
+        }
+
+        return 'least_expensive';
     }
 }

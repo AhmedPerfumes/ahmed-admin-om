@@ -40,38 +40,14 @@
                                 <textarea name="description" id="description" class="form-control">{{ old('description', isset($promotion) ? $promotion->description : '') }}</textarea>
                             </div>
 
-                           <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="start_date" class="form-label">Start Date</label>
-                                        <input type="date" name="start_date" id="start_date" class="form-control" 
-                                            value="{{ old('start_date', isset($promotion) ? $promotion->start_date->format('Y-m-d') : '') }}" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="start_time" class="form-label">Start Time <small class="text-muted">(Optional)</small></label>
-                                        <input type="time" name="start_time" id="start_time" class="form-control" 
-                                            value="{{ old('start_time', isset($promotion) ? $promotion->start_date->format('H:i') : '') }}">
-                                    </div>
-                                </div>
+                            <div class="mb-3">
+                                <label for="start_date" class="form-label">Start Date</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ old('start_date', isset($promotion) ? $promotion->start_date->format('Y-m-d') : '') }}" required>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="end_date" class="form-label">End Date</label>
-                                        <input type="date" name="end_date" id="end_date" class="form-control" 
-                                            value="{{ old('end_date', isset($promotion) ? $promotion->end_date->format('Y-m-d') : '') }}" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="end_time" class="form-label">End Time <small class="text-muted">(Optional)</small></label>
-                                        <input type="time" name="end_time" id="end_time" class="form-control" 
-                                            value="{{ old('end_time', isset($promotion) ? $promotion->end_date->format('H:i') : '') }}">
-                                    </div>
-                                </div>
+                            <div class="mb-3">
+                                <label for="end_date" class="form-label">End Date</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ old('end_date', isset($promotion) ? $promotion->end_date->format('Y-m-d') : '') }}" required>
                             </div>
 
                             <!-- BOGO Fields -->
@@ -551,7 +527,6 @@
                 }
             });
 const groupDiscountSelect = new TomSelect('#discount_group_product_ids', { 
-    maxItems: 10,
     plugins: ['remove_button'], // optional but recommended for UX
     closeAfterSelect: false,    // keeps dropdown open for multi-select
     onItemAdd: function() {
@@ -560,7 +535,7 @@ const groupDiscountSelect = new TomSelect('#discount_group_product_ids', {
     }
 });
 
-            const couponGroupSelect = new TomSelect('#coupon_group_product_ids', { maxItems: 10 });
+            const couponGroupSelect = new TomSelect('#coupon_group_product_ids');
             const coupon_product_group_ids = new TomSelect('#coupon_product_group_ids', { maxItems: 10 });
             const couponCustomerSelect = new TomSelect('#coupon_customer_ids', { maxItems: 10 });
             const cashbackGroupProductSelect = new TomSelect('#cashback_group_product_ids', { maxItems: 10 });
