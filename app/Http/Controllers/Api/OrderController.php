@@ -28,6 +28,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Botble\Ecommerce\Models\Currency;
 use App\Models\Promotion;
+use App\Models\ActiveCoupon;
 
 class OrderController extends Controller
 {
@@ -164,40 +165,91 @@ class OrderController extends Controller
             
            // ----- NEW PROMOTION COUPON LOGIC -----
         $coupon_code = $request->input('couponCode');
-        if(isset($coupon_code) && !empty($coupon_code)) {
-            $coupon = Promotion::select('promotions.id', 'type', 'start_date', 'end_date', 'coupon_code AS code', 'percentage As value', 'apply_to')
-                ->where('type', 'coupon')
-                ->where('coupon_code', $coupon_code)
-                ->whereDate('start_date', '<=', now())
-                ->whereDate('end_date', '>=', now())
-                ->join('coupon_rules', 'promotions.id', '=', 'coupon_rules.promotion_id', 'left')
-                ->first();
+        $decode = null;
 
-            if(!$coupon) {
-                return response()->json(['couponMessage' => 'Invalid Coupon Code']);
+         if (isset($coupon_code) && !empty($coupon_code)) {
+
+            if (!isset($request->couponData) || empty($request->couponData)) {
+                return response()->json(['couponMessage' => 'Apply or Remove Coupon First']);
             }
-            // $order_address = OrderAddress::where('phone', $request->input('billingAddress.mobile'))->first();
-            // // echo $order_address;
-            // if($order_address) {
-            //     $order = Order::where('id', $order_address->order_id)->first();
-            //     $customer_discount = DB::table('ec_customer_used_coupons')->where('customer_id', $order->user_id)->where('discount_id', $coupon->id)->first();
-            //     if($customer_discount) {
-            //         return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
-            //     }
-            // }
 
-            $customer = OrderAddress::join('payments', 'payments.order_id', '=', 'ec_order_addresses.order_id')->where('status', 'completed')->where('phone', $request->input('billingAddress.mobile'))->get();
+            $couponRegistrationId = $request->couponData['couponRegistrationId'] ?? 0;
 
-            if(!$customer->isEmpty()) {
-                if(strtolower($request->input('couponCode')) == 'welcome10') {
-                    return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
-                }
-                $customer_discount = DB::table('ec_customer_used_coupons')->where('customer_id', $customer[0]->customer_id)->where('discount_id', $coupon->id)->first();
-                if($customer_discount) {
-                    return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
-                }
+            // ✅ Build payload conditionally
+            $postData = [
+                'salesType' => $request->couponData['salesType'] ?? '',
+                'company' => $request->couponData['company'] ?? '',
+                'mobileNo' => $request->billingAddress['mobile'] ?? '',
+                'email' => $request->billingAddress['email'] ?? '',
+                'couponRegistrationId' => $couponRegistrationId,
+            ];
+
+            // ✅ Only include couponCode when registrationId = 0
+            if ($couponRegistrationId == 0) {
+                $postData['couponCode'] = $coupon_code;
+            }
+
+            // 🔥 CURL setup
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => env('SMART_VIEW_COUPON_API_URL') . 'Coupon/ActiveCoupons',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => json_encode($postData),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                ],
+            ]);
+
+            $response = curl_exec($curl);
+            curl_close($curl);
+
+            $decode = json_decode($response);
+
+            // ✅ Validation check
+            if (!isset($decode->data) || (is_array($decode->data) && empty($decode->data))) {
+                return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
             }
         }
+        // if(isset($coupon_code) && !empty($coupon_code)) {
+        //     $coupon = Promotion::select('promotions.id', 'type', 'start_date', 'end_date', 'coupon_code AS code', 'percentage As value', 'apply_to')
+        //         ->where('type', 'coupon')
+        //         ->where('coupon_code', $coupon_code)
+        //         ->whereDate('start_date', '<=', now())
+        //         ->whereDate('end_date', '>=', now())
+        //         ->join('coupon_rules', 'promotions.id', '=', 'coupon_rules.promotion_id', 'left')
+        //         ->first();
+
+        //     if(!$coupon) {
+        //         return response()->json(['couponMessage' => 'Invalid Coupon Code']);
+        //     }
+        //     // $order_address = OrderAddress::where('phone', $request->input('billingAddress.mobile'))->first();
+        //     // // echo $order_address;
+        //     // if($order_address) {
+        //     //     $order = Order::where('id', $order_address->order_id)->first();
+        //     //     $customer_discount = DB::table('ec_customer_used_coupons')->where('customer_id', $order->user_id)->where('discount_id', $coupon->id)->first();
+        //     //     if($customer_discount) {
+        //     //         return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
+        //     //     }
+        //     // }
+
+        //     $customer = OrderAddress::join('payments', 'payments.order_id', '=', 'ec_order_addresses.order_id')->where('status', 'completed')->where('phone', $request->input('billingAddress.mobile'))->get();
+
+        //     if(!$customer->isEmpty()) {
+        //         if(strtolower($request->input('couponCode')) == 'welcome10') {
+        //             return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
+        //         }
+        //         $customer_discount = DB::table('ec_customer_used_coupons')->where('customer_id', $customer[0]->customer_id)->where('discount_id', $coupon->id)->first();
+        //         if($customer_discount) {
+        //             return response()->json(['couponMessage' => 'You Have Already Used this Coupon Code']);
+        //         }
+        //     }
+        // }
             
 
             
@@ -652,41 +704,10 @@ class OrderController extends Controller
                     
                 }
                 }
-                  elseif(!empty($product['coupon']) && !is_null($exisProduct->coupon) && !empty($exisProduct->coupon) && isset($exisProduct->coupon) && isset($exisProduct->coupon[strtolower($request->input('couponCode'))]) && $exisProduct->coupon[strtolower($request->input('couponCode'))]['code'] == strtolower($request->input('couponCode'))) {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = $price * $quantity;
-                    $discount_percent = $exisProduct->coupon[strtolower($request->input('couponCode'))]['value'];
-                    $discount_amount = ($total_amount / 100) * $discount_percent;
-                    $net_amount = $total_amount - $discount_amount;
-                    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                    $gross_amount = $net_amount + $tax_amount;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
-                
-                    $orderProduct = [
-                        'order_id' => $order->id,
-                        'product_id' => $product['product_id'],
-                        'product_name' => $exisProduct->name,
-                        'product_image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'weight' => $exisProduct->weight,
-                        'price' => $price,
-                        'total_amount' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'product_options' => [],
-                        'options' => json_encode($options),
-                        'product_type' => $exisProduct->product_type,
-                        'product_category' => $product['category_name'],
-                        'product_subcategory' => isset($product['subcategory_name']) ? $product['subcategory_name'] : '',
-                        'vat' => $request->input('vatTax'),
-                    ];
-                // } elseif(!is_null($exisProduct->sale_price)) {
+                //   elseif(!empty($product['coupon']) && !is_null($exisProduct->coupon) && !empty($exisProduct->coupon) && isset($exisProduct->coupon) && isset($exisProduct->coupon[strtolower($request->input('couponCode'))]) && $exisProduct->coupon[strtolower($request->input('couponCode'))]['code'] == strtolower($request->input('couponCode'))) {
                 //     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
                 //     $total_amount = $price * $quantity;
-                //     $discount_percent = $exisProduct->sale_price;
+                //     $discount_percent = $exisProduct->coupon[strtolower($request->input('couponCode'))]['value'];
                 //     $discount_amount = ($total_amount / 100) * $discount_percent;
                 //     $net_amount = $total_amount - $discount_amount;
                 //     $tax_amount = ($net_amount / 100) * $request->input('vatTax');
@@ -714,8 +735,46 @@ class OrderController extends Controller
                 //         'product_subcategory' => isset($product['subcategory_name']) ? $product['subcategory_name'] : '',
                 //         'vat' => $request->input('vatTax'),
                 //     ];
-                // }
-                  }
+elseif(isset($product['is_coupon']) && !isset($product['is_gift']) && is_null($exisProduct->sale_price)) {
+     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    $total_amount = $price * $quantity;
+     if ($product['coupon_type'] == 'percent') {
+        $discount_percent = $product['value'];
+        $discount_amount = ($total_amount / 100) * $discount_percent;
+        $net_amount = $total_amount - $discount_amount;
+    } else { // 'amount'
+        $discount_percent = 0;
+        // Assumes 'value' is the discount per unit, pre-tax
+        $discount_amount = ($product['value'] / (1 + ($request->input('vatTax') / 100))) * $quantity;
+        $net_amount = $total_amount - $discount_amount;
+    }
+     $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    $gross_amount = $net_amount + $tax_amount;
+    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+
+    $orderProduct = [
+        'order_id'           => $order->id,
+        'product_id'         => $product['product_id'],
+        'product_name'       => $exisProduct->name,
+        'product_image'      => $exisProduct->image,
+        'qty'                => $quantity,
+        'weight'             => $exisProduct->weight,
+        'price'              => $price,
+        'total_amount'       => $total_amount,
+        'discount_percent'   => $discount_percent,
+        'discount_amount'    => $discount_amount,
+        'net_amount'         => $net_amount,
+        'tax_amount'         => $tax_amount,
+        'gross_amount'       => $gross_amount,
+        'product_options'    => [],
+        'options'            => json_encode($options),
+        'product_type'       => $exisProduct->product_type,
+        'product_category'   => $product['category_name'],
+        'product_subcategory' => isset($product['subcategory_name']) ? $product['subcategory_name'] : '',
+        'vat'                => $request->input('vatTax'),
+        'campaign'           => $request->input('couponCode'), // Use the coupon code as campaign
+    ];
+              }
                  elseif(isset($product['is_gift']) && $product['is_gift'] == true) {
                     // echo 'FOC';
                     // echo '\n ';
@@ -919,6 +978,15 @@ class OrderController extends Controller
             if ($couponCode = $request->input('couponCode')) {
                 Discount::getFacadeRoot()->afterOrderPlaced($couponCode, $request->input('customer_id') ? $request->input('customer_id') : $customer_id);
             }
+            if (!empty($decode) && !empty($decode->data) && is_array($decode->data)) {
+    $couponObject = $decode->data[0];
+    $couponData = (array) $couponObject;
+    $couponData['order_id'] = $order->id;
+
+    // Add any required default values for NOT NULL columns here
+
+    ActiveCoupon::create($couponData);
+}
 
             if($request->input('customer_id')) {
                 $loggedInCustomer = Customer::where('id', $request->input('customer_id'))->first();
@@ -1025,20 +1093,20 @@ class OrderController extends Controller
                     }
                 }  
 
-                $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+                // $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
 
-                // Store in a temporary property or a new array
-                $couponData = [];
-                foreach ($coupons as $coupon) {
-                    $couponData[strtolower($coupon->code)] = [
-                        'code' => strtolower($coupon->code),
-                        'value' => $coupon->value,
-                        'start_date' => $coupon->start_date,
-                        'end_date' => $coupon->end_date,
-                    ];
-                }
+                // // Store in a temporary property or a new array
+                // $couponData = [];
+                // foreach ($coupons as $coupon) {
+                //     $couponData[strtolower($coupon->code)] = [
+                //         'code' => strtolower($coupon->code),
+                //         'value' => $coupon->value,
+                //         'start_date' => $coupon->start_date,
+                //         'end_date' => $coupon->end_date,
+                //     ];
+                // }
 
-                $exisProduct->coupon = $couponData;
+                // $exisProduct->coupon = $couponData;
 
                 if(!is_null($exisProduct->discount)) {
                      if($exisProduct->discount->discount_type == 'percent') {
@@ -1101,34 +1169,44 @@ class OrderController extends Controller
                         ];
                     }
                     }
-                    elseif(!empty($product['coupon']) && !is_null($exisProduct->coupon) && !empty($exisProduct->coupon) && isset($exisProduct->coupon) && isset($exisProduct->coupon[strtolower($request->input('couponCode'))]) && $exisProduct->coupon[strtolower($request->input('couponCode'))]['code'] == strtolower($request->input('couponCode'))) {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = $price * $quantity;
-                    $discount_percent = $exisProduct->coupon[strtolower($request->input('couponCode'))]['value'];
-                    $discount_amount = ($total_amount / 100) * $discount_percent;
-                    $net_amount = $total_amount - $discount_amount;
-                    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                    $gross_amount = $net_amount + $tax_amount;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
-                
-                    $orderProduct = [
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Botble\Ecommerce\Models\Product',
-                        'reference_id' => $exisProduct->id,
-                        'name' => $exisProduct->name,
-                        'description' => $exisProduct->description,
-                        'image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'price' => $price,
-                        'sub_total' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'amount' => $gross_amount,
-                        'options' => json_encode($options),
-                    ];
+                    elseif(isset($product['is_coupon']) && !isset($product['is_gift']) && is_null($exisProduct->sale_price)) {
+
+    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    $total_amount = $price * $quantity;
+
+    if ($product['coupon_type'] == 'percent') {
+        $discount_percent = $product['value'];
+        $discount_amount = ($total_amount / 100) * $discount_percent;
+        $net_amount = $total_amount - $discount_amount;
+    } else { // 'amount'
+        $discount_percent = 0;
+        $discount_amount = ($product['value'] / (1 + ($request->input('vatTax') / 100))) * $quantity;
+        $net_amount = $total_amount - $discount_amount;
+    }
+
+    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    $gross_amount = $net_amount + $tax_amount;
+    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+
+    $orderProduct = [
+        'invoice_id'       => $invoice->id,
+        'reference_type'   => 'Botble\Ecommerce\Models\Product',
+        'reference_id'     => $exisProduct->id,
+        'name'             => $exisProduct->name,
+        'description'      => $exisProduct->description,
+        'image'            => $exisProduct->image,
+        'qty'              => $quantity,
+        'price'            => $price,
+        'sub_total'        => $total_amount,
+        'discount_percent' => $discount_percent,
+        'discount_amount'  => $discount_amount,
+        'net_amount'       => $net_amount,
+        'tax_amount'       => $tax_amount,
+        'gross_amount'     => $gross_amount,
+        'amount'           => $gross_amount,
+        'options'          => json_encode($options),
+    ];
+                    
                 } elseif(!is_null($exisProduct->sale_price)) {
                     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
                     $total_amount = $price * $quantity;
