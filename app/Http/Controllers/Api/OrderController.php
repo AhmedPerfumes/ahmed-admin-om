@@ -52,45 +52,6 @@ class OrderController extends Controller
                 ]);
             }
 
-            //Old Discount Logic
-        //      $discountFromDb = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
-        //         $requestHasDiscount = !is_null($product['discount']);
-        //         $dbHasDiscount = !is_null($discountFromDb);
-
-        //         if ($requestHasDiscount && !$dbHasDiscount) {
-        //             // Request says there should be a discount, but none found in DB
-        //             return response()->json([
-        //                 'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
-        //             ]);
-        //         }
-
-        //         if (!$requestHasDiscount && $dbHasDiscount) {
-        //             // Request says there should be no discount, but one exists in DB
-        //             return response()->json([
-        //                 'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
-        //             ]);
-        //         }
-
-        //         // Optional: if you want to compare actual values of discount too
-        //         if ($requestHasDiscount && $dbHasDiscount) {
-        //             $match =
-        //                 $product['discount']['value'] == $discountFromDb->value &&
-        //                 $product['discount']['start_date'] == $discountFromDb->start_date &&
-        //                 $product['discount']['end_date'] == $discountFromDb->end_date;
-
-        //             if (!$match) {
-        //                 return response()->json([
-        //                     'discountMessage' => 'One or more Products were removed. Please add them again to continue.'
-        //                 ]);
-        //             }
-        //         }
-
-        //         // All matched, assign discount
-        //         $exisProduct->discount = $discountFromDb;
-        //     // }
-
-        //     array_push($barcodes, $exisProduct->barcode);
-        // }
         }
 
              $focFromDb = Promotion::where('type', 'foc')
@@ -155,11 +116,11 @@ class OrderController extends Controller
                 ]);
             }
 
-            if (!$requestHasBOGO && $dbHasBOGO) {
-                return response()->json([
-                    'bogoMessage' => 'One or more Products were removed. Please add them again to continue. Request ' . $product['product_name']
-                ]);
-            }
+            // if (!$requestHasBOGO && $dbHasBOGO) {
+            //     return response()->json([
+            //         'bogoMessage' => 'One or more Products were removed. Please add them again to continue. Request ' . $product['product_name']
+            //     ]);
+            // }
 
             array_push($barcodes, $exisProduct->barcode);
             
@@ -546,75 +507,79 @@ class OrderController extends Controller
 
                 // $exisProduct->coupon = $couponData;
                 $exisProduct->discount = null;
+                 $bogoOverrodeDiscount = isset($product['_original_discount']) && $product['_original_discount'] !== null;
 
-                $individualDiscount = Promotion::where('type', 'discount')
-                    ->whereDate('start_date', '<=', now())
-                    ->whereDate('end_date', '>=', now())
-                    ->whereHas('discountRules', function ($query) {
-                        $query->where('apply_to', 'individual');
-                    })
-                    ->whereHas('discountRules.individualRules', function ($query) use ($product) {
-                        $query->where('product_id', $product['product_id']);
-                    })
-                    ->with(['discountRules' => function ($query) {
-                        $query->where('apply_to', 'individual')
-                            ->select('id', 'promotion_id', 'apply_to');
-                    }, 'discountRules.individualRules' => function ($query) use ($product) {
-                        $query->where('product_id', $product['product_id'])
-                            ->select('discount_rule_id', 'product_id', 'value', 'discount_type', 'product_price', 'discount_amount', 'final_price');
-                    }])
-                    ->first();
 
-                if ($individualDiscount) {
-                    $discountRule = $individualDiscount->discountRules->first();
-                    $individualRule = $discountRule ? $discountRule->individualRules->first() : null;
-                    if ($individualRule) {
-                        $exisProduct->discount = (object) [
-                            'name' => $individualDiscount->name,
-                            'value' => intval($individualRule->value),
-                            'apply_to' => $discountRule->apply_to,
-                            'discount_type' => $individualRule->discount_type,
-                            'product_price' => $individualRule->product_price,
-                            'discount_amount' => $individualRule->discount_amount,
-                            'final_price' => $individualRule->final_price,
-                            'start_date' => $individualDiscount->start_date->format('Y-m-d H:i:s'),
-                            'end_date' => $individualDiscount->end_date->format('Y-m-d H:i:s'),
-                        ];
-                    }
-                } else {
-                    // If no individual discount, try to fetch discount for group/all products
-                    $groupDiscount = Promotion::where('type', 'discount')
+                 if (!$bogoOverrodeDiscount) {    
+                    $individualDiscount = Promotion::where('type', 'discount')
                         ->whereDate('start_date', '<=', now())
                         ->whereDate('end_date', '>=', now())
                         ->whereHas('discountRules', function ($query) {
-                            $query->where('apply_to', '!=', 'individual');
+                            $query->where('apply_to', 'individual');
                         })
-                        ->whereHas('discountRules.products', function ($query) use ($product) {
+                        ->whereHas('discountRules.individualRules', function ($query) use ($product) {
                             $query->where('product_id', $product['product_id']);
                         })
                         ->with(['discountRules' => function ($query) {
-                            $query->where('apply_to', '!=', 'individual')
-                                ->select('id', 'promotion_id', 'percentage', 'apply_to');
+                            $query->where('apply_to', 'individual')
+                                ->select('id', 'promotion_id', 'apply_to');
+                        }, 'discountRules.individualRules' => function ($query) use ($product) {
+                            $query->where('product_id', $product['product_id'])
+                                ->select('discount_rule_id', 'product_id', 'value', 'discount_type', 'product_price', 'discount_amount', 'final_price');
                         }])
                         ->first();
 
-                    if ($groupDiscount) {
-                        $discountRule = $groupDiscount->discountRules->first();
-                        if ($discountRule) {
+                    if ($individualDiscount) {
+                        $discountRule = $individualDiscount->discountRules->first();
+                        $individualRule = $discountRule ? $discountRule->individualRules->first() : null;
+                        if ($individualRule) {
                             $exisProduct->discount = (object) [
-                                'name' => $groupDiscount->name,
-                                'value' => intval($discountRule->percentage),
+                                'name' => $individualDiscount->name,
+                                'value' => intval($individualRule->value),
                                 'apply_to' => $discountRule->apply_to,
-                                'discount_type' => 'percent',
-                                'product_price' => null,
-                                'discount_amount' => null,
-                                'final_price' => null,
-                                'start_date' => $groupDiscount->start_date->format('Y-m-d H:i:s'),
-                                'end_date' => $groupDiscount->end_date->format('Y-m-d H:i:s'),
+                                'discount_type' => $individualRule->discount_type,
+                                'product_price' => $individualRule->product_price,
+                                'discount_amount' => $individualRule->discount_amount,
+                                'final_price' => $individualRule->final_price,
+                                'start_date' => $individualDiscount->start_date->format('Y-m-d H:i:s'),
+                                'end_date' => $individualDiscount->end_date->format('Y-m-d H:i:s'),
                             ];
                         }
+                    } else {
+                        // If no individual discount, try to fetch discount for group/all products
+                        $groupDiscount = Promotion::where('type', 'discount')
+                            ->whereDate('start_date', '<=', now())
+                            ->whereDate('end_date', '>=', now())
+                            ->whereHas('discountRules', function ($query) {
+                                $query->where('apply_to', '!=', 'individual');
+                            })
+                            ->whereHas('discountRules.products', function ($query) use ($product) {
+                                $query->where('product_id', $product['product_id']);
+                            })
+                            ->with(['discountRules' => function ($query) {
+                                $query->where('apply_to', '!=', 'individual')
+                                    ->select('id', 'promotion_id', 'percentage', 'apply_to');
+                            }])
+                            ->first();
+
+                        if ($groupDiscount) {
+                            $discountRule = $groupDiscount->discountRules->first();
+                            if ($discountRule) {
+                                $exisProduct->discount = (object) [
+                                    'name' => $groupDiscount->name,
+                                    'value' => intval($discountRule->percentage),
+                                    'apply_to' => $discountRule->apply_to,
+                                    'discount_type' => 'percent',
+                                    'product_price' => null,
+                                    'discount_amount' => null,
+                                    'final_price' => null,
+                                    'start_date' => $groupDiscount->start_date->format('Y-m-d H:i:s'),
+                                    'end_date' => $groupDiscount->end_date->format('Y-m-d H:i:s'),
+                                ];
+                            }
+                        }
                     }
-                }
+                 }
 
                 $exisProduct->qty = $quantity;
                  if((isset($product['is_gift']) && $product['is_gift'] == true)) {
@@ -635,7 +600,7 @@ class OrderController extends Controller
 
                 // $discount_price = '';
                 // $sale_price = '';
-                if(!is_null($exisProduct->discount)) {
+               if(!is_null($exisProduct->discount) && $exisProduct->is_gift != 1 && $exisProduct->is_coupon != 1) {
                     if($exisProduct->discount->discount_type == 'percent') {
                     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
                     $total_amount = $price * $quantity;
@@ -663,7 +628,7 @@ class OrderController extends Controller
                         'product_options' => [],
                         'options' => json_encode($options),
                         'product_type' => $exisProduct->product_type,
-                        'product_category' => $product['category_name'],
+                        'product_category' => $product['category_name'] ? $product['category_name'] : '',
                         'product_subcategory' => isset($product['subcategory_name']) ? $product['subcategory_name'] : '',
                         'vat' => $request->input('vatTax'),
                     ];
@@ -1017,315 +982,315 @@ elseif(isset($product['is_coupon']) && !isset($product['is_gift']) && is_null($e
                 'status' => $request->input('payment_status'),
             ]);
 
-            foreach ($request->input('products') as $product) {
+    //         foreach ($request->input('products') as $product) {
                 
-                $quantity = $product['quantity'] ? $product['quantity'] : 1;
+    //             $quantity = $product['quantity'] ? $product['quantity'] : 1;
 
-                $exisProduct = Product::where('id', $product['product_id'])->first();
+    //             $exisProduct = Product::where('id', $product['product_id'])->first();
 
-                // $exisProduct->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
-               $exisProduct->discount = null;
+    //             // $exisProduct->discount = DiscountProduct::select('value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->first();
+    //            $exisProduct->discount = null;
 
-                $individualDiscount = Promotion::where('type', 'discount')
-                    ->whereDate('start_date', '<=', now())
-                    ->whereDate('end_date', '>=', now())
-                    ->whereHas('discountRules', function ($query) {
-                        $query->where('apply_to', 'individual');
-                    })
-                    ->whereHas('discountRules.individualRules', function ($query) use ($product) {
-                        $query->where('product_id', $product['product_id']);
-                    })
-                    ->with(['discountRules' => function ($query) {
-                        $query->where('apply_to', 'individual')
-                            ->select('id', 'promotion_id', 'apply_to');
-                    }, 'discountRules.individualRules' => function ($query) use ($product) {
-                        $query->where('product_id', $product['product_id'])
-                            ->select('discount_rule_id', 'product_id', 'value', 'discount_type', 'product_price', 'discount_amount', 'final_price');
-                    }])
-                    ->first();
+    //             $individualDiscount = Promotion::where('type', 'discount')
+    //                 ->whereDate('start_date', '<=', now())
+    //                 ->whereDate('end_date', '>=', now())
+    //                 ->whereHas('discountRules', function ($query) {
+    //                     $query->where('apply_to', 'individual');
+    //                 })
+    //                 ->whereHas('discountRules.individualRules', function ($query) use ($product) {
+    //                     $query->where('product_id', $product['product_id']);
+    //                 })
+    //                 ->with(['discountRules' => function ($query) {
+    //                     $query->where('apply_to', 'individual')
+    //                         ->select('id', 'promotion_id', 'apply_to');
+    //                 }, 'discountRules.individualRules' => function ($query) use ($product) {
+    //                     $query->where('product_id', $product['product_id'])
+    //                         ->select('discount_rule_id', 'product_id', 'value', 'discount_type', 'product_price', 'discount_amount', 'final_price');
+    //                 }])
+    //                 ->first();
 
-                if ($individualDiscount) {
-                    $discountRule = $individualDiscount->discountRules->first();
-                    $individualRule = $discountRule ? $discountRule->individualRules->first() : null;
-                    if ($individualRule) {
-                        $exisProduct->discount = (object) [
-                            'value' => intval($individualRule->value),
-                            'apply_to' => $discountRule->apply_to,
-                            'discount_type' => $individualRule->discount_type,
-                            'product_price' => $individualRule->product_price,
-                            'discount_amount' => $individualRule->discount_amount,
-                            'final_price' => $individualRule->final_price,
-                            'start_date' => $individualDiscount->start_date->format('Y-m-d H:i:s'),
-                            'end_date' => $individualDiscount->end_date->format('Y-m-d H:i:s'),
-                        ];
-                    }
-                } else {
-                    // If no individual discount, try to fetch discount for group/all products
-                    $groupDiscount = Promotion::where('type', 'discount')
-                        ->whereDate('start_date', '<=', now())
-                        ->whereDate('end_date', '>=', now())
-                        ->whereHas('discountRules', function ($query) {
-                            $query->where('apply_to', '!=', 'individual');
-                        })
-                        ->whereHas('discountRules.products', function ($query) use ($product) {
-                            $query->where('product_id', $product['product_id']);
-                        })
-                        ->with(['discountRules' => function ($query) {
-                            $query->where('apply_to', '!=', 'individual')
-                                ->select('id', 'promotion_id', 'percentage', 'apply_to');
-                        }])
-                        ->first();
+    //             if ($individualDiscount) {
+    //                 $discountRule = $individualDiscount->discountRules->first();
+    //                 $individualRule = $discountRule ? $discountRule->individualRules->first() : null;
+    //                 if ($individualRule) {
+    //                     $exisProduct->discount = (object) [
+    //                         'value' => intval($individualRule->value),
+    //                         'apply_to' => $discountRule->apply_to,
+    //                         'discount_type' => $individualRule->discount_type,
+    //                         'product_price' => $individualRule->product_price,
+    //                         'discount_amount' => $individualRule->discount_amount,
+    //                         'final_price' => $individualRule->final_price,
+    //                         'start_date' => $individualDiscount->start_date->format('Y-m-d H:i:s'),
+    //                         'end_date' => $individualDiscount->end_date->format('Y-m-d H:i:s'),
+    //                     ];
+    //                 }
+    //             } else {
+    //                 // If no individual discount, try to fetch discount for group/all products
+    //                 $groupDiscount = Promotion::where('type', 'discount')
+    //                     ->whereDate('start_date', '<=', now())
+    //                     ->whereDate('end_date', '>=', now())
+    //                     ->whereHas('discountRules', function ($query) {
+    //                         $query->where('apply_to', '!=', 'individual');
+    //                     })
+    //                     ->whereHas('discountRules.products', function ($query) use ($product) {
+    //                         $query->where('product_id', $product['product_id']);
+    //                     })
+    //                     ->with(['discountRules' => function ($query) {
+    //                         $query->where('apply_to', '!=', 'individual')
+    //                             ->select('id', 'promotion_id', 'percentage', 'apply_to');
+    //                     }])
+    //                     ->first();
 
-                    if ($groupDiscount) {
-                        $discountRule = $groupDiscount->discountRules->first();
-                        if ($discountRule) {
-                            $exisProduct->discount = (object) [
-                                'value' => intval($discountRule->percentage),
-                                'apply_to' => $discountRule->apply_to,
-                                'discount_type' => 'percent',
-                                'product_price' => null,
-                                'discount_amount' => null,
-                                'final_price' => null,
-                                'start_date' => $groupDiscount->start_date->format('Y-m-d H:i:s'),
-                                'end_date' => $groupDiscount->end_date->format('Y-m-d H:i:s'),
-                            ];
-                        }
-                    }
-                }  
+    //                 if ($groupDiscount) {
+    //                     $discountRule = $groupDiscount->discountRules->first();
+    //                     if ($discountRule) {
+    //                         $exisProduct->discount = (object) [
+    //                             'value' => intval($discountRule->percentage),
+    //                             'apply_to' => $discountRule->apply_to,
+    //                             'discount_type' => 'percent',
+    //                             'product_price' => null,
+    //                             'discount_amount' => null,
+    //                             'final_price' => null,
+    //                             'start_date' => $groupDiscount->start_date->format('Y-m-d H:i:s'),
+    //                             'end_date' => $groupDiscount->end_date->format('Y-m-d H:i:s'),
+    //                         ];
+    //                     }
+    //                 }
+    //             }  
 
-                // $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
+    //             // $coupons = DiscountProduct::select('code', 'value', 'start_date', 'end_date')->where('product_id', $product['product_id'])->whereNotNull('code')->whereDate('start_date', '<=', now())->whereDate('end_date', '>=', now())->join('ec_discounts', 'ec_discounts.id', '=', 'ec_discount_products.discount_id', 'left')->get();
 
-                // // Store in a temporary property or a new array
-                // $couponData = [];
-                // foreach ($coupons as $coupon) {
-                //     $couponData[strtolower($coupon->code)] = [
-                //         'code' => strtolower($coupon->code),
-                //         'value' => $coupon->value,
-                //         'start_date' => $coupon->start_date,
-                //         'end_date' => $coupon->end_date,
-                //     ];
-                // }
+    //             // // Store in a temporary property or a new array
+    //             // $couponData = [];
+    //             // foreach ($coupons as $coupon) {
+    //             //     $couponData[strtolower($coupon->code)] = [
+    //             //         'code' => strtolower($coupon->code),
+    //             //         'value' => $coupon->value,
+    //             //         'start_date' => $coupon->start_date,
+    //             //         'end_date' => $coupon->end_date,
+    //             //     ];
+    //             // }
 
-                // $exisProduct->coupon = $couponData;
+    //             // $exisProduct->coupon = $couponData;
 
-                if(!is_null($exisProduct->discount)) {
-                     if($exisProduct->discount->discount_type == 'percent') {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = $price * $quantity;
-                    $discount_percent = $exisProduct->discount->value;
-                    $discount_amount = ($total_amount / 100) * $discount_percent;
-                    $net_amount = $total_amount - $discount_amount;
-                    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                    $gross_amount = $net_amount + $tax_amount;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //             if(!is_null($exisProduct->discount)) {
+    //                  if($exisProduct->discount->discount_type == 'percent') {
+    //                 $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                 $total_amount = $price * $quantity;
+    //                 $discount_percent = $exisProduct->discount->value;
+    //                 $discount_amount = ($total_amount / 100) * $discount_percent;
+    //                 $net_amount = $total_amount - $discount_amount;
+    //                 $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    //                 $gross_amount = $net_amount + $tax_amount;
+    //                 $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                 
-                    $orderProduct = [
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Botble\Ecommerce\Models\Product',
-                        'reference_id' => $exisProduct->id,
-                        'name' => $exisProduct->name,
-                        'description' => $exisProduct->description,
-                        'image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'price' => $price,
-                        'sub_total' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'amount' => $gross_amount,
-                        'options' => json_encode($options),
-                    ];
-                } 
-                 elseif($exisProduct->discount->discount_type == 'amount') {
-                        $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                        $total_amount = $price * $quantity;
-                        $sale_price = $exisProduct->discount->final_price / (1 + ($request->input('vatTax') / 100));
-                        $discount_percent = 0;
-                        $discount_amount = $total_amount - ($sale_price * $quantity);
-                        $net_amount = $total_amount - $discount_amount;
-                        $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                        $gross_amount = $net_amount + $tax_amount;
-                        $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //                 $orderProduct = [
+    //                     'invoice_id' => $invoice->id,
+    //                     'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //                     'reference_id' => $exisProduct->id,
+    //                     'name' => $exisProduct->name,
+    //                     'description' => $exisProduct->description,
+    //                     'image' => $exisProduct->image,
+    //                     'qty' => $quantity,
+    //                     'price' => $price,
+    //                     'sub_total' => $total_amount,
+    //                     'discount_percent' => $discount_percent,
+    //                     'discount_amount' => $discount_amount,
+    //                     'net_amount' => $net_amount,
+    //                     'tax_amount' => $tax_amount,
+    //                     'gross_amount' => $gross_amount,
+    //                     'amount' => $gross_amount,
+    //                     'options' => json_encode($options),
+    //                 ];
+    //             } 
+    //              elseif($exisProduct->discount->discount_type == 'amount') {
+    //                     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                     $total_amount = $price * $quantity;
+    //                     $sale_price = $exisProduct->discount->final_price / (1 + ($request->input('vatTax') / 100));
+    //                     $discount_percent = 0;
+    //                     $discount_amount = $total_amount - ($sale_price * $quantity);
+    //                     $net_amount = $total_amount - $discount_amount;
+    //                     $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    //                     $gross_amount = $net_amount + $tax_amount;
+    //                     $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                     
-                        $orderProduct = [
-                            'invoice_id' => $invoice->id,
-                            'reference_type' => 'Botble\Ecommerce\Models\Product',
-                            'reference_id' => $exisProduct->id,
-                            'name' => $exisProduct->name,
-                            // 'description' => $exisProduct->description,
-                            'image' => $exisProduct->image,
-                            'qty' => $quantity,
-                            'price' => $price,
-                            'sub_total' => $total_amount,
-                            'discount_percent' => $discount_percent,
-                            'discount_amount' => $discount_amount,
-                            'net_amount' => $net_amount,
-                            'tax_amount' => $tax_amount,
-                            'gross_amount' => $gross_amount,
-                            'amount' => $gross_amount,
-                            'options' => json_encode($options),
-                        ];
-                    }
-                    }
-                    elseif(isset($product['is_coupon']) && !isset($product['is_gift']) && is_null($exisProduct->sale_price)) {
+    //                     $orderProduct = [
+    //                         'invoice_id' => $invoice->id,
+    //                         'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //                         'reference_id' => $exisProduct->id,
+    //                         'name' => $exisProduct->name,
+    //                         // 'description' => $exisProduct->description,
+    //                         'image' => $exisProduct->image,
+    //                         'qty' => $quantity,
+    //                         'price' => $price,
+    //                         'sub_total' => $total_amount,
+    //                         'discount_percent' => $discount_percent,
+    //                         'discount_amount' => $discount_amount,
+    //                         'net_amount' => $net_amount,
+    //                         'tax_amount' => $tax_amount,
+    //                         'gross_amount' => $gross_amount,
+    //                         'amount' => $gross_amount,
+    //                         'options' => json_encode($options),
+    //                     ];
+    //                 }
+    //                 }
+    //                 elseif(isset($product['is_coupon']) && !isset($product['is_gift']) && is_null($exisProduct->sale_price)) {
 
-    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-    $total_amount = $price * $quantity;
+    // $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    // $total_amount = $price * $quantity;
 
-    if ($product['coupon_type'] == 'percent') {
-        $discount_percent = $product['value'];
-        $discount_amount = ($total_amount / 100) * $discount_percent;
-        $net_amount = $total_amount - $discount_amount;
-    } else { // 'amount'
-        $discount_percent = 0;
-        $discount_amount = ($product['value'] / (1 + ($request->input('vatTax') / 100))) * $quantity;
-        $net_amount = $total_amount - $discount_amount;
-    }
+    // if ($product['coupon_type'] == 'percent') {
+    //     $discount_percent = $product['value'];
+    //     $discount_amount = ($total_amount / 100) * $discount_percent;
+    //     $net_amount = $total_amount - $discount_amount;
+    // } else { // 'amount'
+    //     $discount_percent = 0;
+    //     $discount_amount = ($product['value'] / (1 + ($request->input('vatTax') / 100))) * $quantity;
+    //     $net_amount = $total_amount - $discount_amount;
+    // }
 
-    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-    $gross_amount = $net_amount + $tax_amount;
-    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    // $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    // $gross_amount = $net_amount + $tax_amount;
+    // $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
 
-    $orderProduct = [
-        'invoice_id'       => $invoice->id,
-        'reference_type'   => 'Botble\Ecommerce\Models\Product',
-        'reference_id'     => $exisProduct->id,
-        'name'             => $exisProduct->name,
-        'description'      => $exisProduct->description,
-        'image'            => $exisProduct->image,
-        'qty'              => $quantity,
-        'price'            => $price,
-        'sub_total'        => $total_amount,
-        'discount_percent' => $discount_percent,
-        'discount_amount'  => $discount_amount,
-        'net_amount'       => $net_amount,
-        'tax_amount'       => $tax_amount,
-        'gross_amount'     => $gross_amount,
-        'amount'           => $gross_amount,
-        'options'          => json_encode($options),
-    ];
+    // $orderProduct = [
+    //     'invoice_id'       => $invoice->id,
+    //     'reference_type'   => 'Botble\Ecommerce\Models\Product',
+    //     'reference_id'     => $exisProduct->id,
+    //     'name'             => $exisProduct->name,
+    //     'description'      => $exisProduct->description,
+    //     'image'            => $exisProduct->image,
+    //     'qty'              => $quantity,
+    //     'price'            => $price,
+    //     'sub_total'        => $total_amount,
+    //     'discount_percent' => $discount_percent,
+    //     'discount_amount'  => $discount_amount,
+    //     'net_amount'       => $net_amount,
+    //     'tax_amount'       => $tax_amount,
+    //     'gross_amount'     => $gross_amount,
+    //     'amount'           => $gross_amount,
+    //     'options'          => json_encode($options),
+    // ];
                     
-                } elseif(!is_null($exisProduct->sale_price)) {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = $price * $quantity;
-                    $discount_percent = $exisProduct->sale_price;
-                    $discount_amount = ($total_amount / 100) * $discount_percent;
-                    $net_amount = $total_amount - $discount_amount;
-                    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                    $gross_amount = $net_amount + $tax_amount;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //             } elseif(!is_null($exisProduct->sale_price)) {
+    //                 $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                 $total_amount = $price * $quantity;
+    //                 $discount_percent = $exisProduct->sale_price;
+    //                 $discount_amount = ($total_amount / 100) * $discount_percent;
+    //                 $net_amount = $total_amount - $discount_amount;
+    //                 $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    //                 $gross_amount = $net_amount + $tax_amount;
+    //                 $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                 
-                    $orderProduct = [
-                         'invoice_id' => $invoice->id,
-                        'reference_type' => 'Botble\Ecommerce\Models\Product',
-                        'reference_id' => $exisProduct->id,
-                        'name' => $exisProduct->name,
-                        'description' => $exisProduct->description,
-                        'image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'price' => $price,
-                        'sub_total' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'amount' => $gross_amount,
-                        'options' => json_encode($options),
-                    ];
-                }
-                elseif(isset($product['is_gift']) && $product['is_gift'] == true) {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = 0.00;
-                    $discount_percent = 100;
-                    $discount_amount = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $net_amount = 0.00;
-                    $tax_amount = 0.00;
-                    $gross_amount = 0.00;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //                 $orderProduct = [
+    //                      'invoice_id' => $invoice->id,
+    //                     'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //                     'reference_id' => $exisProduct->id,
+    //                     'name' => $exisProduct->name,
+    //                     'description' => $exisProduct->description,
+    //                     'image' => $exisProduct->image,
+    //                     'qty' => $quantity,
+    //                     'price' => $price,
+    //                     'sub_total' => $total_amount,
+    //                     'discount_percent' => $discount_percent,
+    //                     'discount_amount' => $discount_amount,
+    //                     'net_amount' => $net_amount,
+    //                     'tax_amount' => $tax_amount,
+    //                     'gross_amount' => $gross_amount,
+    //                     'amount' => $gross_amount,
+    //                     'options' => json_encode($options),
+    //                 ];
+    //             }
+    //             elseif(isset($product['is_gift']) && $product['is_gift'] == true) {
+    //                 $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                 $total_amount = 0.00;
+    //                 $discount_percent = 100;
+    //                 $discount_amount = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                 $net_amount = 0.00;
+    //                 $tax_amount = 0.00;
+    //                 $gross_amount = 0.00;
+    //                 $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                 
-                    $orderProduct = [
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Botble\Ecommerce\Models\Product',
-                        'reference_id' => $exisProduct->id,
-                        'name' => $exisProduct->name,
-                        // 'description' => $exisProduct->description,
-                        'image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'price' => $price,
-                        'sub_total' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'amount' => $gross_amount,
-                        'options' => json_encode($options)
-                    ];
-                }
-                // elseif(isset($product['is_gift']) && $product['is_gift'] == true) {
-                //     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                //     $total_amount = 0.00;
-                //     $discount_percent = 100;
-                //     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                //     $net_amount = 0.00;
-                //     $tax_amount = 0.00;
-                //     $gross_amount = 0.00;
-                //     $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //                 $orderProduct = [
+    //                     'invoice_id' => $invoice->id,
+    //                     'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //                     'reference_id' => $exisProduct->id,
+    //                     'name' => $exisProduct->name,
+    //                     // 'description' => $exisProduct->description,
+    //                     'image' => $exisProduct->image,
+    //                     'qty' => $quantity,
+    //                     'price' => $price,
+    //                     'sub_total' => $total_amount,
+    //                     'discount_percent' => $discount_percent,
+    //                     'discount_amount' => $discount_amount,
+    //                     'net_amount' => $net_amount,
+    //                     'tax_amount' => $tax_amount,
+    //                     'gross_amount' => $gross_amount,
+    //                     'amount' => $gross_amount,
+    //                     'options' => json_encode($options)
+    //                 ];
+    //             }
+    //             // elseif(isset($product['is_gift']) && $product['is_gift'] == true) {
+    //             //     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //             //     $total_amount = 0.00;
+    //             //     $discount_percent = 100;
+    //             //     $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //             //     $net_amount = 0.00;
+    //             //     $tax_amount = 0.00;
+    //             //     $gross_amount = 0.00;
+    //             //     $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                 
-                //     $orderProduct = [
-                //         'invoice_id' => $invoice->id,
-                //         'reference_type' => 'Botble\Ecommerce\Models\Product',
-                //         'reference_id' => $exisProduct->id,
-                //         'name' => $exisProduct->name,
-                //         'description' => $exisProduct->description,
-                //         'image' => $exisProduct->image,
-                //         'qty' => $quantity,
-                //         'price' => $price,
-                //         'sub_total' => $total_amount,
-                //         'discount_percent' => $discount_percent,
-                //         'discount_amount' => $discount_amount,
-                //         'net_amount' => $net_amount,
-                //         'tax_amount' => $tax_amount,
-                //         'gross_amount' => $gross_amount,
-                //         'amount' => $gross_amount,
-                //         'options' => json_encode($options)
-                //     ];
-                // }
-                else {
-                    $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
-                    $total_amount = $price * $quantity;
-                    $discount_percent = 0;
-                    $discount_amount = 0.00;
-                    $net_amount = $total_amount - $discount_amount;
-                    $tax_amount = ($net_amount / 100) * $request->input('vatTax');
-                    $gross_amount = $net_amount + $tax_amount;
-                    $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
+    //             //     $orderProduct = [
+    //             //         'invoice_id' => $invoice->id,
+    //             //         'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //             //         'reference_id' => $exisProduct->id,
+    //             //         'name' => $exisProduct->name,
+    //             //         'description' => $exisProduct->description,
+    //             //         'image' => $exisProduct->image,
+    //             //         'qty' => $quantity,
+    //             //         'price' => $price,
+    //             //         'sub_total' => $total_amount,
+    //             //         'discount_percent' => $discount_percent,
+    //             //         'discount_amount' => $discount_amount,
+    //             //         'net_amount' => $net_amount,
+    //             //         'tax_amount' => $tax_amount,
+    //             //         'gross_amount' => $gross_amount,
+    //             //         'amount' => $gross_amount,
+    //             //         'options' => json_encode($options)
+    //             //     ];
+    //             // }
+    //             else {
+    //                 $price = $exisProduct->price / (1 + ($request->input('vatTax') / 100));
+    //                 $total_amount = $price * $quantity;
+    //                 $discount_percent = 0;
+    //                 $discount_amount = 0.00;
+    //                 $net_amount = $total_amount - $discount_amount;
+    //                 $tax_amount = ($net_amount / 100) * $request->input('vatTax');
+    //                 $gross_amount = $net_amount + $tax_amount;
+    //                 $options = array('name' => $exisProduct->name, 'image' => $exisProduct->image, 'attributes' => ' ', 'taxRate' => $exisProduct->percentage, 'options' => [], 'extras' => [], 'sku' => $exisProduct->sku, 'weight' => $exisProduct->weight, 'original_price' => $exisProduct->price, 'product_type' => $exisProduct->product_type);
                 
-                    $orderProduct = [
-                        'invoice_id' => $invoice->id,
-                        'reference_type' => 'Botble\Ecommerce\Models\Product',
-                        'reference_id' => $exisProduct->id,
-                        'name' => $exisProduct->name,
-                        'description' => $exisProduct->description,
-                        'image' => $exisProduct->image,
-                        'qty' => $quantity,
-                        'price' => $price,
-                        'sub_total' => $total_amount,
-                        'discount_percent' => $discount_percent,
-                        'discount_amount' => $discount_amount,
-                        'net_amount' => $net_amount,
-                        'tax_amount' => $tax_amount,
-                        'gross_amount' => $gross_amount,
-                        'amount' => $gross_amount,
-                        'options' => json_encode($options),
-                    ];
-                }
+    //                 $orderProduct = [
+    //                     'invoice_id' => $invoice->id,
+    //                     'reference_type' => 'Botble\Ecommerce\Models\Product',
+    //                     'reference_id' => $exisProduct->id,
+    //                     'name' => $exisProduct->name,
+    //                     'description' => $exisProduct->description,
+    //                     'image' => $exisProduct->image,
+    //                     'qty' => $quantity,
+    //                     'price' => $price,
+    //                     'sub_total' => $total_amount,
+    //                     'discount_percent' => $discount_percent,
+    //                     'discount_amount' => $discount_amount,
+    //                     'net_amount' => $net_amount,
+    //                     'tax_amount' => $tax_amount,
+    //                     'gross_amount' => $gross_amount,
+    //                     'amount' => $gross_amount,
+    //                     'options' => json_encode($options),
+    //                 ];
+    //             }
 
-                InvoiceItem::query()->create($orderProduct);
-            }
+    //             InvoiceItem::query()->create($orderProduct);
+    //         }
 
             if($request->input('payment_method') == 'tap') {
                 $resp = $this->tapPayment($request, $data, $order);

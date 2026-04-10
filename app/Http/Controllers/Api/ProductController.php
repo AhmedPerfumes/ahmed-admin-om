@@ -127,7 +127,7 @@ class ProductController extends Controller
                                 $individualRule = $discountRule ? $discountRule->individualRules->first() : null;
                                 if ($individualRule) {
                                     $val->discount = (object) [
-                                        'value' => intval($individualRule->value),
+                                        'value' => ($individualRule->value),
                                         'apply_to' => $discountRule->apply_to,
                                         'discount_type' => $individualRule->discount_type,
                                         'product_price' => $individualRule->product_price,
@@ -1985,7 +1985,7 @@ class ProductController extends Controller
             return 'same_product';
         } elseif ($buyQty == 2 && $getQty == 2) {
             return 'least_expensive';
-        } elseif ($buyQty == 3 && $getQty == 1) {
+        } elseif ($buyQty == 4 && $getQty == 1) {
             return $hasFreeProducts ? 'customer_select' : 'least_expensive';
         } elseif ($buyQty > 1 && $getQty == 1) {
             return 'auto_add';
