@@ -59,4 +59,8 @@ Route::middleware('customLogs')->group(function () {
     // Contact Route
     Route::post('/contact', [ContactController::class, 'contact']);
     Route::post('/campaign', [ContactController::class, 'campaign']);
+
+     Route::get('/bogoProducts', [ProductController::class, 'bogoProducts']);
+     
+    Route::get('/freeGiftProducts', [ProductController::class, 'freeGiftProducts']);
 });
