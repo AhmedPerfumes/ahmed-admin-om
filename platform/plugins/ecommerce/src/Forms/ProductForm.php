@@ -140,61 +140,42 @@ class ProductForm extends FormAbstract
                     ->toArray()
             )
             ->add('row_content_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
-            // ── Fragrance Notes Tab Profile ─────────────────────────────────
+            // ── Fragrance Notes Profile ─────────────────────────────────
             ->add('notes_tabs_open', HtmlField::class, HtmlFieldOption::make()->content('
                 <div class="card mb-3">
-                    <div class="card-header bg-light">
+                    <div class="card-header">
                         <h4 class="card-title mb-0">Fragrance Notes Profile</h4>
                     </div>
                     <div class="card-body">
-                        <ul class="nav nav-tabs" id="fragranceNotesTab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="top-notes-tab" data-bs-toggle="tab" data-bs-target="#top-notes-pane" type="button" role="tab" aria-controls="top-notes-pane" aria-selected="true">Top Notes</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="heart-notes-tab" data-bs-toggle="tab" data-bs-target="#heart-notes-pane" type="button" role="tab" aria-controls="heart-notes-pane" aria-selected="false">Heart Notes</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="base-notes-tab" data-bs-toggle="tab" data-bs-target="#base-notes-pane" type="button" role="tab" aria-controls="base-notes-pane" aria-selected="false">Base Notes</button>
-                            </li>
-                        </ul>
-                        <div class="tab-content pt-3" id="fragranceNotesTabContent">
             ')->toArray())
 
-            // --- TOP NOTES TAB PANE ---
-            ->add('top_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="tab-pane fade show active" id="top-notes-pane" role="tabpanel" aria-labelledby="top-notes-tab">')->toArray())
-            ->add('top_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Top Note Image')->toArray())
-            ->add('top_note_desc_row_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="row g-3 mt-2">')->toArray())
-            ->add('top_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Top Note Description')->placeholder('Enter top note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('top_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Top Note Description (Arabic)')->placeholder('أدخل وصف المكونات العليا باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('top_note_desc_row_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
-            ->add('top_notes_pane_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
+            // --- TOP NOTES ---
+            ->add('top_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<h5 class="mb-2">Top Notes</h5><div class="row g-3">')->toArray())
+            ->add('top_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Top Note Image')->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('top_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Top Note Description')->placeholder('Enter top note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('top_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Top Note Description (Arabic)')->placeholder('أدخل وصف المكونات العليا باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('top_notes_pane_close', HtmlField::class, HtmlFieldOption::make()->content('</div><hr class="my-4">')->toArray())
 
-            // --- HEART NOTES TAB PANE ---
-            ->add('heart_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="tab-pane fade" id="heart-notes-pane" role="tabpanel" aria-labelledby="heart-notes-tab">')->toArray())
-            ->add('heart_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Heart Note Image')->toArray())
-            ->add('heart_note_desc_row_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="row g-3 mt-2">')->toArray())
-            ->add('heart_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Heart Note Description')->placeholder('Enter heart note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('heart_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Heart Note Description (Arabic)')->placeholder('أدخل وصف المكونات الوسطى باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('heart_note_desc_row_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
-            ->add('heart_notes_pane_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
+            // --- HEART NOTES ---
+            ->add('heart_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<h5 class="mb-2">Heart Notes</h5><div class="row g-3">')->toArray())
+            ->add('heart_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Heart Note Image')->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('heart_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Heart Note Description')->placeholder('Enter heart note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('heart_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Heart Note Description (Arabic)')->placeholder('أدخل وصف المكونات الوسطى باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('heart_notes_pane_close', HtmlField::class, HtmlFieldOption::make()->content('</div><hr class="my-4">')->toArray())
 
-            // --- BASE NOTES TAB PANE ---
-            ->add('base_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="tab-pane fade" id="base-notes-pane" role="tabpanel" aria-labelledby="base-notes-tab">')->toArray())
-            ->add('base_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Base Note Image')->toArray())
-            ->add('base_note_desc_row_open', HtmlField::class, HtmlFieldOption::make()->content('<div class="row g-3 mt-2">')->toArray())
-            ->add('base_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Base Note Description')->placeholder('Enter base note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('base_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Base Note Description (Arabic)')->placeholder('أدخل وصف المكونات الأساسية باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-6'])->toArray())
-            ->add('base_note_desc_row_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
+            // --- BASE NOTES ---
+            ->add('base_notes_pane_open', HtmlField::class, HtmlFieldOption::make()->content('<h5 class="mb-2">Base Notes</h5><div class="row g-3">')->toArray())
+            ->add('base_note_image', MediaImageField::class, MediaImageFieldOption::make()->label('Base Note Image')->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('base_note_description', TextareaField::class, DescriptionFieldOption::make()->label('Base Note Description')->placeholder('Enter base note description...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
+            ->add('base_note_description_ar', TextareaField::class, DescriptionFieldOption::make()->label('Base Note Description (Arabic)')->placeholder('أدخل وصف المكونات الأساسية باللغة العربية...')->maxLength(10000)->rows(4)->wrapperAttributes(['class' => 'col-md-4'])->toArray())
             ->add('base_notes_pane_close', HtmlField::class, HtmlFieldOption::make()->content('</div>')->toArray())
 
             ->add('notes_tabs_close', HtmlField::class, HtmlFieldOption::make()->content('
-                        </div>
                     </div>
                 </div>
             ')->toArray())
             ->add('images[]', MediaImagesField::class, [
-                'label' => trans('plugins/ecommerce::products.form.image'),
+                'label' => 'Product Images',
                 'values' => $productId ? $this->getModel()->images : [],
             ])
             ->addMetaBoxes([
